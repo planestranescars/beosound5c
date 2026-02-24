@@ -6,6 +6,7 @@
     "CD": { "id": "cd", "hidden": true },
     "USB": { "id": "usb", "paths": ["/mnt/usb-music"] },
     "SPOTIFY": "spotify",
+    "TIDAL": "tidal",
     "NEWS": "news",
     "SCENES": "scenes",
     "SECURITY": { "url": "softarc/security.html" },
@@ -36,5 +37,6 @@
   },
   "cd": { "device": "/dev/sr0" },
   "spotify": { "client_id": "" },
+  "tidal": {},
   "news": { "guardian_api_key": "test" }
 }

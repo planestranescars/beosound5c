@@ -28,6 +28,9 @@ const AppConfig = {
     // Apple Music source
     appleMusicServiceUrl: 'http://localhost:8774',
 
+    // Tidal source
+    tidalServiceUrl: 'http://localhost:8772',
+
     // USB file source
     usbServiceUrl: 'http://localhost:8773',
 

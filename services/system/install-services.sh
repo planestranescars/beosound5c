@@ -24,6 +24,7 @@ SERVICES=(
     "beo-bluetooth.service"
     "beo-source-cd.service"
     "beo-source-spotify.service"
+    "beo-tidal.service"
     "beo-source-usb.service"
     "beo-source-news.service"
     "beo-ui.service"
@@ -257,8 +258,16 @@ if menu_has "SPOTIFY"; then
     echo "  🎵 Starting Spotify source..."
     start_service beo-source-spotify.service
 else
-    echo "  ⏭️  SPOTIFY not in menu — skipping beo-source-spotify"
+    echo "  ⏭️   SPOTIFY not in menu — skipping beo-source-spotify"
     disable_service beo-source-spotify.service
+fi
+
+if menu_has "TIDAL"; then
+    echo "  🎵 Starting Tidal source..."
+    start_service beo-tidal.service
+else
+    echo "  ⏭️   TIDAL not in menu — skipping beo-tidal"
+    disable_service beo-tidal.service
 fi
 
 if menu_has "USB"; then

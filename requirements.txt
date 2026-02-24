@@ -26,3 +26,6 @@ aiomqtt>=2.0.0
 
 # Text-to-speech (news source)
 edge-tts>=6.1.0
+
+# Tidal source
+tidalapi>=0.8.0
