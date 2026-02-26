@@ -1077,6 +1077,12 @@ class ArcList {
             // Send click command back to server (rate limited)
             //this.sendClickCommand();
         }
+
+        // Handle volume wheel events (standalone mode — main UI handles these
+        // via hardware-input.js when tidal.html runs as an iframe)
+        if (data.type === 'volume' && data.data) {
+            this.handleVolumeEvent(data.data);
+        }
     }
     
     /**
@@ -1098,7 +1104,62 @@ class ArcList {
             // Silently fail
         }
     }
-    
+
+    /**
+     * Handle volume wheel events in standalone mode.
+     * Shows a volume arc overlay and POSTs the new level to the router.
+     * (When running as an iframe in the main UI, hardware-input.js handles
+     * volume and this method is never called.)
+     */
+    handleVolumeEvent(data) {
+        const direction = data.direction === 'clock' ? 1 : -1;
+        const speed     = data.speed || 1;
+
+        if (this._volume == null) this._volume = 50;
+
+        // Fast counter-clockwise spin → snap to 0
+        if (direction === -1 && speed > 25) {
+            this._volume = 0;
+        } else {
+            // Non-linear: faster at low volumes, slower at high volumes
+            const scale = 1.5 - (this._volume / 100) * 0.9;
+            const step  = (speed / 14) * scale;
+            this._volume = Math.max(0, Math.min(100, this._volume + direction * step));
+        }
+
+        // Update and show volume overlay
+        const overlay = document.getElementById('volume-overlay');
+        if (overlay) {
+            const arcPath = document.getElementById('volume-arc-path');
+            if (arcPath) {
+                const arcLen     = Math.PI * 274;
+                const arcFraction = 0.18 + (this._volume / 100) * 0.64;
+                arcPath.style.strokeDasharray  = arcLen;
+                arcPath.style.strokeDashoffset = arcLen * (1 - arcFraction);
+            }
+            const label = document.getElementById('volume-label');
+            if (label) label.textContent = `${Math.round(this._volume)}%`;
+
+            overlay.classList.add('visible');
+            if (this._volumeHideTimer) clearTimeout(this._volumeHideTimer);
+            this._volumeHideTimer = setTimeout(() => {
+                overlay.classList.remove('visible');
+            }, 1500);
+        }
+
+        // Debounced POST to router (fire-and-forget — router may not be running)
+        if (this._volumeSendTimer) clearTimeout(this._volumeSendTimer);
+        this._volumeSendTimer = setTimeout(() => {
+            const routerUrl = (typeof AppConfig !== 'undefined' && AppConfig.routerUrl)
+                || 'http://localhost:8770';
+            fetch(`${routerUrl}/router/volume`, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ volume: Math.round(this._volume) })
+            }).catch(() => {}); // router not required in standalone dev mode
+        }, 50);
+    }
+
     /**
      * Check if an item is passing through the selected position and trigger click
      */
@@ -2199,6 +2260,36 @@ class ArcList {
                 } catch (error) {
                     console.log(`🔴 [IFRAME-SOURCE] ERROR: ${error.message}`);
                 }
+                this.notifyEmulatorOfSelection(id, itemName);
+                return;
+            }
+        }
+
+        // Direct source command for Tidal (bypass Home Assistant webhook)
+        if (this.config.sourceCommandUrl && this.config.context === 'tidal') {
+            let cmdPayload;
+            if (this.viewMode === 'parent' || this.viewMode === 'single') {
+                const rawId = (this.parentData[Math.round(this.currentIndex)] ||
+                               this.items[Math.round(this.currentIndex)])?.id;
+                if (rawId) cmdPayload = { command: 'play_playlist', playlist_id: rawId };
+            } else if (this.viewMode === 'child') {
+                const trackIdx = Math.round(this.currentIndex);
+                cmdPayload = {
+                    command:     'play_playlist',
+                    playlist_id: this.selectedParent.id,
+                    track_index: trackIdx
+                };
+            }
+
+            if (cmdPayload) {
+                console.log('[TIDAL] Sending command:', cmdPayload);
+                fetch(this.config.sourceCommandUrl, {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify(cmdPayload)
+                }).then(r => {
+                    if (!r.ok) console.warn('[TIDAL] Command failed:', r.status);
+                }).catch(e => console.warn('[TIDAL] Command error:', e.message));
                 this.notifyEmulatorOfSelection(id, itemName);
                 return;
             }

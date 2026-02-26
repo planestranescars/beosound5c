@@ -57,9 +57,41 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        /* Volume overlay — shown when volume wheel is turned in standalone mode */
+        #volume-overlay {
+            position: fixed; top: 0; left: 0;
+            width: 1024px; height: 768px;
+            z-index: 99990; pointer-events: none;
+            opacity: 0; transition: opacity 0.2s ease-out;
+        }
+        #volume-overlay.visible { opacity: 1; }
+        #volume-arc-svg { position: absolute; top: 0; left: 0; overflow: visible; }
+        #volume-label {
+            position: absolute; right: 70px; top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255,255,255,0.9);
+            font-family: 'Helvetica Neue', sans-serif;
+            font-size: 28px; font-weight: 200; letter-spacing: 2px;
+        }
     </style>
 </head>
 <body>
+    <!-- Volume overlay (appears when volume wheel is turned) -->
+    <div id="volume-overlay">
+        <svg id="volume-arc-svg" width="1024" height="768">
+            <defs>
+                <linearGradient id="volArcGradient" x1="0" y1="1" x2="0" y2="0">
+                    <stop offset="0%" stop-color="rgba(102,153,255,0.2)"/>
+                    <stop offset="100%" stop-color="rgba(102,153,255,1)"/>
+                </linearGradient>
+            </defs>
+            <path id="volume-arc-path"
+                  d="M 1146 658 A 274 274 0 0 1 1146 110"
+                  fill="none" stroke="url(#volArcGradient)"
+                  stroke-width="6" stroke-linecap="round"/>
+        </svg>
+        <span id="volume-label"></span>
+    </div>
     <div id="app">
         <div class="counter">
             <span id="current-item">1</span> / <span id="total-items">0</span>
