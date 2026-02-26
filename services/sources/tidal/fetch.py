@@ -121,10 +121,13 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Locate token file (same env-var logic as auth.py)
-    TOKEN_FILE = os.path.join(
-        os.getenv('BS5C_CONFIG_DIR', '/etc/beosound5c'),
-        'tidal_session.json',
+    import pathlib as _pl
+    _default_dir = (
+        _pl.Path.home() / '.config' / 'beosound5c'
+        if sys.platform == 'win32'
+        else _pl.Path('/etc/beosound5c')
     )
+    TOKEN_FILE = _pl.Path(os.getenv('BS5C_CONFIG_DIR', str(_default_dir))) / 'tidal_session.json'
 
     try:
         import tidalapi

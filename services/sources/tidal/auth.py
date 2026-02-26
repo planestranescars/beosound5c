@@ -9,13 +9,17 @@ Uses tidalapi's built-in device-code flow:
 
 import logging
 import os
+import pathlib
+import sys
 
 log = logging.getLogger('beo-tidal.auth')
 
-TOKEN_FILE = os.path.join(
-    os.getenv('BS5C_CONFIG_DIR', '/etc/beosound5c'),
-    'tidal_session.json',
+_default_config_dir = (
+    pathlib.Path.home() / '.config' / 'beosound5c'
+    if sys.platform == 'win32'
+    else pathlib.Path('/etc/beosound5c')
 )
+TOKEN_FILE = pathlib.Path(os.getenv('BS5C_CONFIG_DIR', str(_default_config_dir))) / 'tidal_session.json'
 
 
 class TidalAuth:

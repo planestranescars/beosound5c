@@ -52,6 +52,16 @@ NIGHTLY_REFRESH_HOUR      = 3        # 3 am
 
 # ── Service ───────────────────────────────────────────────────────────────────
 
+def _is_port_open(host, port, timeout=0.5):
+    """Sync TCP probe - avoids Windows IOCP CancelledError from aiohttp to closed port."""
+    import socket
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
 class TidalService(SourceBase):
     """Main Tidal source — registers with router, drives the arc UI."""
 
@@ -107,7 +117,17 @@ class TidalService(SourceBase):
         else:
             log.info('No Tidal session — waiting for OAuth via /setup')
 
-        await self.register('available')
+        # Only register if router is listening - avoids Windows IOCP CancelledError
+        if _is_port_open('127.0.0.1', 8770):
+            asyncio.create_task(self._register_ignoring_errors('available'))
+        else:
+            log.info('Router not available - running in standalone mode')
+
+    async def _register_ignoring_errors(self, state: str):
+        try:
+            await self.register(state)
+        except BaseException as e:
+            log.warning('Could not register with router (running standalone?): %s', e)
 
     async def on_stop(self):
         await self._stop_playback()
@@ -528,7 +548,7 @@ p{{color:#999;font-size:14px;margin-bottom:12px}}
     {action_html}
   </div>
 </div>
-<script src="/assets/qrcode.min.js" onerror="void 0"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" onerror="void 0"></script>
 <script>
 {qr_js}
 // Poll until auth completes, then reload

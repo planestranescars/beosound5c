@@ -90,7 +90,10 @@ class SourceBase:
                     delay = 2 * (attempt + 1)
                     log.warning("Router unreachable (attempt %d/%d, retry in %ds): %s",
                                 attempt + 1, _retries, delay, e)
-                    await asyncio.sleep(delay)
+                    try:
+                        await asyncio.sleep(delay)
+                    except asyncio.CancelledError:
+                        return  # abort retries on shutdown / Windows IOCP cancel
                 else:
                     log.warning("Router unreachable after %d attempts: %s", _retries, e)
 
@@ -237,9 +240,15 @@ class SourceBase:
         stop_event = asyncio.Event()
         loop = asyncio.get_event_loop()
         for sig in (signal.SIGTERM, signal.SIGINT):
-            loop.add_signal_handler(sig, stop_event.set)
+            try:
+                loop.add_signal_handler(sig, stop_event.set)
+            except NotImplementedError:
+                # Windows (ProactorEventLoop) does not support add_signal_handler
+                pass
         try:
             await stop_event.wait()
+        except asyncio.CancelledError:
+            pass  # Normal on Windows: ProactorEventLoop spurious cancel or Ctrl+C
         finally:
             await self.stop()
 
